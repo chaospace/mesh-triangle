@@ -16,3 +16,15 @@
   
 ## 동작샘플
 ![동작 샘플](./resource/sample.gif)
+
+
+
+## 참고
+ - [voronoi stippling](https://observablehq.com/@drzax/voronoi-stippling)
+ - [stippling and TSPs](https://openprocessing.org/sketch/1236886/)
+
+## 후기
+ - leva 사용경험
+ - vite 설정경험
+ - 선언적인 리액트와 canvas를 이용한 이펙트 처리를 위한 코드관리를 고민
+   - 이펙트에 다양한 변수가 사용되다 보니 훅은 기능별로 나누기 보단 하나의 훅에서 참조를 여러 개 하게되고 결국 코드 덩어리가 크게 사용되는 느낌을 받음.
