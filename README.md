@@ -28,3 +28,48 @@
  - vite 설정경험
  - 선언적인 리액트와 canvas를 이용한 이펙트 처리를 위한 코드관리를 고민
    - 이펙트에 다양한 변수가 사용되다 보니 훅은 기능별로 나누기 보단 하나의 훅에서 참조를 여러 개 하게되고 결국 코드 덩어리가 크게 사용되는 느낌을 받음.
+
+
+## Zustand 구성
+
+- createStore는 createStoreImpl를 호출하고 내부 코드는 클로저를 이용한 js객체
+- react에서의 상태 감지는 <mark>useSyncExternalStoreWithSelector(api.subscribe, api.getState, api.getServerState || api.getState, selector, equalityFn);</mark>를 이용
+```javascript
+var createStoreImpl = function createStoreImpl(createState) {
+  var state;
+  var listeners = new Set();
+  var setState = function setState(partial, replace) {
+    var nextState = typeof partial === 'function' ? partial(state) : partial;
+    if (!Object.is(nextState, state)) {
+      var _previousState = state;
+      state = (replace != null ? replace : typeof nextState !== 'object') ? nextState : Object.assign({}, state, nextState);
+      listeners.forEach(function (listener) {
+        return listener(state, _previousState);
+      });
+    }
+  };
+  var getState = function getState() {
+    return state;
+  };
+  
+  var subscribe = function subscribe(listener) {
+    listeners.add(listener);
+    return function () {
+      return listeners.delete(listener);
+    };
+  };
+
+  var destroy = function destroy() {
+    listeners.clear();
+  };
+
+  var api = {
+    setState: setState,
+    getState: getState,
+    subscribe: subscribe,
+    destroy: destroy
+  };
+  state = createState(setState, getState, api);
+  return api;
+};
+```
