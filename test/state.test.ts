@@ -1,5 +1,7 @@
-import { create } from "zustand";
+import { create, createStore } from "zustand";
 import computed  from "zustand-computed";
+import { subscribeWithSelector } from "zustand/middleware";
+import { shallow } from "zustand/shallow";
 
 type State = {
     name:string
@@ -32,16 +34,40 @@ describe("zustand상태 동작테스트",()=>{
         console.log('nick-name',useCombinedState.getState().nickname());
     });
 
+
+    it('shallow 비교 배열 테스트', ()=>{
+        let a= [1,0];
+        let b = [1];
+        const r = shallow(a, b);
+        console.log('비교결과', r);
+    });
+
 });
 
 
+describe('바닐라 스토어 테스트',()=>{
+    type MyState={
+        name:string;
+    }
+    const myState = createStore<MyState>()(
+            subscribeWithSelector((set) =>
+                ({name:'cha'})
+            )
+    );
+    
+    it("바닐라스토어 생성 시 미들웨어 적용",()=>{
+        expect(myState.getState().name).toEqual('cha');
+    });
 
-// type test
-// declare const withError:<T,E>(p:Promise<T>) => Promise<[error:undefined, value:T] | [error:E, value:undefined]>;
+    it("바닐라스토어 미들웨어 사용",()=>{
+        myState.subscribe( (state => state.name), 
+                           (selectState) => console.log('selectedState', selectState),
+                           {equalityFn:(_, current) => { 
+                                return current === 'ddd!';
+                            }});
+        myState.setState({name:'ddd!'});
+        //myState.setState({name:'cd!'});
+    });
+})
 
-// declare const doSomthing:() => Promise<string>;
-
-// const main = async() => {
-//     let [error, value] = await withError<string, number>(doSomthing());
-// }
 

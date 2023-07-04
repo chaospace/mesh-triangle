@@ -23,6 +23,50 @@ import { vanillaStore } from './vanillaStore'
 const useBoundStore = (selector) => useStore(vanillaStore, selector)
 ```
 
+## 미들웨어 사용
+-  create시 미들웨어 함수를 통해 상태 변경 및 추가행동정의 가능  
+  - ts사용 시 복잡한 타입추론 정의필요(공식문서 참고)
+```javascript
+// Log every time state is changed
+const log = (config) => (set, get, api) =>
+  config(
+    (...args) => {
+      console.log('  applying', args)
+      set(...args)
+      console.log('  new state', get())
+    },
+    get,
+    api
+  )
+
+const useBeeStore = create(
+  log((set) => ({
+    bees: false,
+    setBees: (input) => set({ bees: input }),
+  }))
+)
+```
+- vanilla스토어 사용 시 subscription에 selector를 사용하고 싶다면 미들웨어를 이용해 가능. 
+```javascript
+type MyState={
+        name:string;
+}
+
+const myState = createStore<MyState>()(
+        subscribeWithSelector((set) =>
+            ({name:'cha'})
+        )
+);
+
+// 셀렉터 및 비교 함수를 지정해 변경 감지 가능
+myState.subscribe( (state => state.name), 
+                           (selectState) => console.log('selectedState', selectState),
+                           {equalityFn:(_, current) => { 
+                                return current === 'ddd!';
+                            }});
+myState.setState({name:'ddd!'});
+```
+
 ## 주요 함수 구성
 - createStore 함수 subscription을 이용한 상태변경 감지 제공 및 상태 변경을 위한 get, set 처리제공
   
@@ -86,29 +130,6 @@ const [nuts, honey] = useBearStore(
 const treats = useBearStore((state) => Object.keys(state.treats), shallow)
 ```
 
-- 미들웨어 사용
-  create시 미들웨어 함수를 통해 상태 변경 및 추가행동정의 가능  
-  - ts사용 시 복잡한 타입추론 정의필요(공식문서 참고)
-```javascript
-// Log every time state is changed
-const log = (config) => (set, get, api) =>
-  config(
-    (...args) => {
-      console.log('  applying', args)
-      set(...args)
-      console.log('  new state', get())
-    },
-    get,
-    api
-  )
-
-const useBeeStore = create(
-  log((set) => ({
-    bees: false,
-    setBees: (input) => set({ bees: input }),
-  }))
-)
-```
 
 ## 참고
 - [github페이지](https://github.com/pmndrs/zustand)  
