@@ -1,12 +1,13 @@
 import { PointArray } from "../types";
 
-const MAX_POINT_NUM = 5000;
+const MAX_POINT_NUM = 10000;
 const interpolateEdgePoints = (edgePoints: PointArray, accuracy: number = .5) => {
 
     const edgePointsNum = edgePoints.length;
+
     let limit = ~~(edgePointsNum * accuracy);
     if (limit > MAX_POINT_NUM) limit = MAX_POINT_NUM;
-
+    
     //포인트 보간
     let i = 0;
     let tlen = edgePointsNum;

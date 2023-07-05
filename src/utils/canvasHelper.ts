@@ -1,6 +1,6 @@
 import Delaunay from "../triangles/Delaunay";
 import { interpolateEdgePoints } from "../triangles/delaunayHelper";
-import { BoundingBox, PointArray, PointLike } from "../types";
+import { PointArray, PointLike } from "../types";
 import stackBlur from "./stackBlur";
 
 type DrawSource = Exclude<CanvasImageSource, VideoFrame | HTMLVideoElement>;
@@ -44,11 +44,40 @@ const drawGridLine = (ctx: CanvasRenderingContext2D, w: number, h: number, cellS
     ctx.restore();
 }
 
+const adjustPointCount = (source:PointLike[], precision = .5) => {
+    const max = source.length;
+    let i=0;
+    let limit = ~~(max*precision);
+    let tMax = max;
+    let temp = source.concat();
+    console.log('max', max, 'limit', limit);
+    const results =[];
+    while(i<limit && i<max) {
+        let idx = ~~(tMax*Math.random());
+        results.push(temp[idx]);
+        temp.splice(idx,1);
+        tMax--;
+        i++;
+    }
+    return results;
+}
+
 const createContextRef = (ctx: CanvasRenderingContext2D) => {
 
     return {
         drawGridLine: (w: number, h: number, cellSize: number = 10) => drawGridLine(ctx, w, h, cellSize)
     }
+}
+
+/**
+ * imageData에 rgba접근을 위한 인덱스 정보 반환
+ * @param x : x위치
+ * @param y : y위치
+ * @param w : imageData에 width값
+ * @returns x, y, w정보에 기반한 인덱스 값
+ */
+const getImageDataIndex = (x: number, y: number, w: number) => {
+    return ~~(y) * w + ~~(x);
 }
 
 const getGridInfo = (w: number, h: number, cellSize = 10) => {
@@ -344,5 +373,5 @@ class CanvasInstance {
 
 }
 
-export { CanvasInstance, drawGridEdgeLine, getGrayColorFromRGB, getAverageColor, getGridInfo, createContextRef, getPointsByImageColorWeights, imageDataTotDrawSource, getRGBFromInt, calculateImageColorData, getCropImageData, getImageData, getColorByPos, getGrayScaleData, cloneImageData, getEdgePoints, getSobelImageData };
+export { CanvasInstance, adjustPointCount, getImageDataIndex, drawGridEdgeLine, getGrayColorFromRGB, getAverageColor, getGridInfo, createContextRef, getPointsByImageColorWeights, imageDataTotDrawSource, getRGBFromInt, calculateImageColorData, getCropImageData, getImageData, getColorByPos, getGrayScaleData, cloneImageData, getEdgePoints, getSobelImageData };
 export type { DrawSource };
