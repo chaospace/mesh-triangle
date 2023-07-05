@@ -1,14 +1,16 @@
 import { DependencyList, MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useWatch from "@/hooks/useWatch";
 import getImageFromFile from "@/utils/getImageFromFile";
-import { calculateImageColorData, getEdgePoints, getGrayScaleData, getGridInfo, getSobelImageData } from "@/utils/canvasHelper";
+import { adjustPointCount, calculateImageColorData, getColorByPos, getEdgePoints, getGrayScaleData, getGridInfo, getImageData, getSobelImageData } from "@/utils/canvasHelper";
 import getRatioSize, { getScaleRatio } from "../utils/getRatioSize";
 import stackBlur from "@/utils/stackBlur";
-import { PointLike } from "@/types";
-import { Delaunay } from "d3-delaunay";
+import { PointArray, PointLike } from "@/types";
+// import { Delaunay } from "d3-delaunay";
+import Delaunay, { Triangle } from "@/triangles/Delaunay";
 import { useControls } from "leva";
 import useForceUpdate from "@/hooks/useForceUpdate";
 import useRender from "@/hooks/useRender";
+import { getPolygonCentered, interpolateEdgePoints } from "@/triangles/delaunayHelper";
 
 type CanvasProps = {
     width?: number,
@@ -132,6 +134,36 @@ const updatePoint = (source: EffectImageParams, { threshold, pointDensity }: Eff
     return edgePoints;
 };
 
+const getEdgePoint = (source:{originData:ImageData, colorWeights:Float64Array}, { threshold, pointDensity }:{threshold:number, pointDensity:number}) => {
+
+    const { width, height } = source.originData;
+    const total = width * height;
+    const maxPoint = ~~((pointDensity * total) / 20);
+    const { colorWeights } = source;
+    let i = 0;
+    const edgePoints = new Float64Array(maxPoint * 2);
+    // edgePoints.set([1, 1], i++);
+    // edgePoints.set([width - 1, 1], i++);
+    // edgePoints.set([width - 1, height - 1], i++);
+    // edgePoints.set([1, height - 1], i++);
+    while (i < maxPoint) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        const idx = getImageDataIndex(x, y, width);
+        const weight = colorWeights[idx];
+        if (weight === undefined) {
+            throw new Error('오류 인덱스!');
+        }
+        if (threshold < weight) {
+            edgePoints[i * 2] = x;
+            edgePoints[i * 2 + 1] = y;
+            i++;
+        }
+    }
+
+    return edgePoints;
+};
+
 /**
  * 델루네 효과를 발생시키는 주요 속성은 어떤 것일까?
  * image, points, threshold, pointDensity, blur <-  이중 하나라도 변경되면 다시 그려야 한다.
@@ -145,6 +177,7 @@ const updatePoint = (source: EffectImageParams, { threshold, pointDensity }: Eff
  * @returns 
  */
 // 이펙트 처리 함수를 하나로 만들어 훅으로 관리할 수 있을까?
+/*
 function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
 
     const _ref = useRef<CanvasRenderingContext2D>();
@@ -153,15 +186,11 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
     // 2dcontext 설정
     const setRef = useCallback((node: HTMLCanvasElement) => {
         if (node !== null && !_ref.current) {
-            console.log('ref설정', node);
             _ref.current = node.getContext('2d', { willReadFrequeantly: true })! as CanvasRenderingContext2D;
         }
     }, []);
 
-    /**
-     * 이펙트적용을 셋업함수
-     * 대상이 되는 이미지에서 효과를 위한 기본적인 설정구성
-     */
+    
     const setup = useCallback((image: HTMLImageElement) => {
         if (_ref.current) {
             let { w, h } = getRatioSize(image.width, image.height, config.w, config.h);
@@ -194,10 +223,11 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
 
     const _points = useMemo(() => {
         if (_imageData) {
-            return updatePoint(_imageData, depParams);;
+            console.log('포인트갱신');
+            return updatePoint(_imageData, depParams);
         }
         return undefined;
-    }, [_imageData, ...Object.values(depParams)]);
+    }, [_imageData, depParams.pointDensity, depParams.threshold]);
 
 
     useEffect(() => {
@@ -314,27 +344,7 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
                         _ref.current!.closePath();
                     }
                 }
-                /*
-                //보로노이 도형
-                for (let cell of voronoi.cellPolygons()) {
-                    const [cx, cy] = polygonCenteroid(cell);
-                    _ref.current!.beginPath();
-                    const idx = getGridPixelIndex({ x: cx, y: cy }, width) * 4;
-                    const r = originData.data[idx];
-                    const g = originData.data[idx + 1];
-                    const b = originData.data[idx + 2];
-                    _ref.current!.fillStyle = `rgb(${ r }, ${ g }, ${ b })`;
-                    _ref.current!.beginPath();
-                    _ref.current!.strokeStyle = `rgb(${ r }, ${ g }, ${ b })`;
-                    _ref.current!.moveTo(cell[0][0], cell[0][1]);
-                    for (let j = 1; j < cell.length; j++) {
-                        _ref.current!.lineTo(cell[j][0], cell[j][1]);
-                    }
-                    _ref.current!.stroke();
-                    _ref.current!.fill();
-                    _ref.current!.closePath();
-                }*/
-
+      
                 if (step < _points.length) {
                     step = step << 1;
                     animateID = window.setTimeout(_progress, 200);
@@ -361,8 +371,28 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
     }
 }
 
+*/
 
 
+function* drawTriangle( triangles:Triangle[]) {
+
+    for( let tri of triangles ){
+        const [p0, p1, p2] = tri.nodes;
+        const {x, y} = getPolygonCentered(tri.nodes);
+        yield {x, y, p0, p1, p2};
+    }
+
+}
+
+function* genTriangles(imageData:ImageData, edges:PointArray) {
+    let i=1;
+
+    while(i<edges.length) {
+        const sample = edges.slice(0, i);
+        yield Delaunay.from(imageData.width, imageData.height).insert(sample).getTriangles();
+        i=i<<1;
+    }
+}
 
 
 
@@ -377,7 +407,7 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
             step: .1
         },
         threshold: {
-            value: .3,
+            value: .1,
             min: .1,
             max: .8,
             step: .1
@@ -388,16 +418,69 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
         isOverride: false
     });
 
-    const { ref, setup } = useCanvasEffect({ w: W, h: H }, { pointDensity, threshold, animate, isTriangle, isFill, isOverride });
+    const ref = useRef<HTMLCanvasElement|null>(null);
+    const [imageData, setImageData] = useState<{origin:ImageData, edges:ImageData}|null>(null);
+    // const { ref, setup } = useCanvasEffect({ w: W, h: H }, { pointDensity, threshold, animate, isTriangle, isFill, isOverride });
 
     useRender(() => {
         console.log('draw-re--screen');
     });
 
 
+
+
+    const edgePoints = useMemo(()=>{
+        return imageData?.edges ? interpolateEdgePoints( getEdgePoints(imageData?.edges, threshold*255), pointDensity) : null;
+    },
+    [imageData?.edges, threshold, pointDensity]);
+
+
+    useWatch(()=>{
+        const origin = imageData?.origin;
+        if(origin && edgePoints){
+            const ctx = ref.current?.getContext('2d', {willReadFrequently:true});
+            ctx?.putImageData(imageData.edges,0,0);
+            const gen = genTriangles(origin, edgePoints);
+            const loop = () => {
+                const r = gen.next();
+                if(!r.done) {
+                ctx?.clearRect(0, 0, origin.width, origin.height);
+                 for( let t of  r.value){
+                    const [p0, p1, p2] = t.nodes;
+                    ctx?.beginPath();
+                    ctx?.moveTo(p0.x, p0.y);
+                    ctx?.lineTo(p1.x, p1.y);
+                    ctx?.lineTo(p2.x, p2.y);
+                    ctx?.lineTo(p0.x, p0.y);
+                    const {x, y} = getPolygonCentered(t.nodes);
+                    const color = getColorByPos(origin, ~~x, ~~y);
+                    ctx!.fillStyle = `rgb(${color.r},${color.g},${color.b})`;
+                    ctx!.strokeStyle = `rgb(${color.r},${color.g},${color.b})`;
+                    ctx?.closePath();
+                    ctx?.stroke();
+                    ctx?.fill();
+                 }
+                    setTimeout(loop, 100);
+                }
+            }
+            loop(); 
+        }
+    }, [imageData?.origin, edgePoints])
+
+
     useWatch(async () => {
+        const ctx = ref.current?.getContext('2d', {willReadFrequently:true});
         const image = await getImageFromFile(source) as HTMLImageElement;
-        setup(image);
+        ctx!.canvas.width = image.width;
+        ctx!.canvas.height = image.height;
+        ctx?.drawImage(image, 0, 0, image.width, image.height, 0, 0, ctx?.canvas.width, ctx?.canvas.height); //getImageData(image);
+        const imageData = ctx?.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height)!;
+        const blurImageData = stackBlur(imageData, imageData.width, imageData.height, 2);
+        const edgeImageData = getSobelImageData(blurImageData);
+        setImageData({
+            origin:imageData,
+            edges :edgeImageData
+        });
     }, [source]);
 
     return (
