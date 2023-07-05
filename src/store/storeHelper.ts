@@ -1,4 +1,5 @@
-import { StoreApi, UseBoundStore } from "zustand"
+
+import { StoreApi,  UseBoundStore, useStore } from "zustand"
 
 // const capitalize = (key: string) => key[0].toUpperCase() + key.slice(1);
 
@@ -16,7 +17,7 @@ import { StoreApi, UseBoundStore } from "zustand"
 //     return store;
 // }
 
-
+type WithState<S> = S extends { getState:() => infer T } ? T : never;
 type WithSelector<S> = S extends { getState: () => infer T }
     ? S & { use: { [K in keyof T]: () => T[K] } }
     : never
@@ -32,23 +33,35 @@ const createSelectors = <S extends UseBoundStore<StoreApi<object>>>(_store: S) =
 }
 
 
-/*
-interface FooState {
-    bears: number;
-    inc: (by: number) => void
-}
-
-const useFooBase = create<FooState>()((set) => ({
-    bears: 0,
-    inc: (by) => set((state) => ({ bears: state.bears + by }))
-}));
-
-const useFooStore = createSelectors(useFooBase);
-useFooStore.use.inc()(3);
-const useFooSelectorStore = createGetter(useFooBase);
-useFooSelectorStore.getBears();
-useFooSelectorStore.getInc()(30);
-*/
+const createBoundedStore = ( (store) => (selector, equals) =>  useStore( store, selector as never, equals ) ) as <S extends StoreApi<object>>(store:S) => {
+    ():WithState<S>,
+    <T>( selector:(state:WithState<S>) => T, equals?:(a:T, b:T) => boolean ):T
+};
 
 
-export { createSelectors };
+    
+
+
+// type ComputedState<S> = (state:S) => S;
+
+// const computed = <S,C>(create:StateCreator<S>, compute:(state:S)=>C) => (
+//     set:StoreApi<S>['setState'], get:StoreApi<S>['getState'], api:StoreApi<S>
+// ): S & C  => {
+
+//     const setWithComputed:StoreApi<S>['setState'] = (update, replace) => {
+//         set((state)=>{
+//             const updated = typeof update === 'function' ? (update as (state:S) => Partial<S> |S)(state) : update;
+//             const computedState = compute({...state, ...updated} as S);
+//             return {...updated, ...computedState};
+//         }, replace);
+//     }
+
+//     api.setState = setWithComputed;
+//     const state = create(setWithComputed, get, api);
+//     return {...state, ...compute(state)};
+// }
+
+
+
+
+export { createSelectors, createBoundedStore };

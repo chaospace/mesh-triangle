@@ -1,4 +1,4 @@
-import { PaleteState } from "./store/traiangleStore";
+
 import { Triangle } from "./triangles/Delaunay";
 
 type PointLike = { x: number, y: number };
@@ -22,7 +22,6 @@ enum IMAGE_WORKER_EVENT_TYPE {
 type ImageWorkerData = {
     type: IMAGE_WORKER_EVENT_TYPE;
     buffer: ArrayBufferLike;
-    palette: PaleteState[]
     width: number;
     height: number;
     triangles: Triangle[];

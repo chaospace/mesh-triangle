@@ -1,4 +1,4 @@
-import { create, createStore } from "zustand";
+import { StateCreator, StoreApi, create, createStore } from "zustand";
 import computed  from "zustand-computed";
 import { subscribeWithSelector } from "zustand/middleware";
 import { shallow } from "zustand/shallow";
@@ -42,10 +42,20 @@ describe("zustand상태 동작테스트",()=>{
         console.log('비교결과', r);
     });
 
+    it('store셀렉터 접근', ()=>{
+        const unsub = useCombinedState.subscribe((state, prev) => {
+            return state.name;
+        });
+        
+        useCombinedState.setState({name:'ddee'});
+        unsub();
+
+    });
+
 });
 
 
-describe('바닐라 스토어 테스트',()=>{
+describe.skip('바닐라 스토어 테스트',()=>{
     type MyState={
         name:string;
     }
@@ -60,14 +70,40 @@ describe('바닐라 스토어 테스트',()=>{
     });
 
     it("바닐라스토어 미들웨어 사용",()=>{
-        myState.subscribe( (state => state.name), 
-                           (selectState) => console.log('selectedState', selectState),
+        myState.subscribe( state => state.name, 
+                           selectState => console.log('selectedState', selectState),
                            {equalityFn:(_, current) => { 
                                 return current === 'ddd!';
                             }});
         myState.setState({name:'ddd!'});
-        //myState.setState({name:'cd!'});
+        // myState.setState({name:'cd!'});
     });
 })
 
+
+describe('스토더 slice 테스트',()=>{
+    interface FooSlice {
+        value:string;
+    }
+    interface WooSlice {
+        age:string;
+        getAge:()=>string;
+    }
+    const fooSlice:StateCreator<FooSlice & WooSlice, [],[], FooSlice> = (set, get)=>({
+        value:'foo'
+    });
+
+    const wooSlice:StateCreator<WooSlice & FooSlice,[],[],WooSlice> = (set, get)=>({
+        age:'woo',
+        getAge:() => get().value
+    });
+    const boundedStore = create<FooSlice & WooSlice>()((...a)=>({
+        ...fooSlice(...a),
+        ...wooSlice(...a)
+    }));
+    
+    it("slice된 모듈은 set, get을 통해 다른 모듈에 값을 제어 가능하다.",()=>{
+        expect(boundedStore.getState().getAge()).toEqual('foo');
+    });
+});
 
