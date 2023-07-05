@@ -3,7 +3,7 @@
 
 
 
-const getImageFromFile = (source: File | string) => {
+const getImageFromFile = (source: File | string):Promise<HTMLImageElement> => {
     return new Promise((resolve) => {
         const image = document.createElement('img');
         image.onload = () => resolve(image);
