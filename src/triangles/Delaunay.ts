@@ -108,6 +108,7 @@ class Delaunay {
         ];
     }
 
+
     insert(points: PointArray) {
 
         for (let k = 0, klen = points.length; k < klen; k++) {

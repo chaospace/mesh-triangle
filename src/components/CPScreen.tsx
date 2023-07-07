@@ -10,7 +10,7 @@ import Delaunay, { Triangle } from "@/triangles/Delaunay";
 import { useControls } from "leva";
 import useForceUpdate from "@/hooks/useForceUpdate";
 import useRender from "@/hooks/useRender";
-import { getPolygonCentered, interpolateEdgePoints } from "@/triangles/delaunayHelper";
+import { drawDelaunayConsumer, generatorBinder, getPolygonCentered, interpolateEdgePoints, renderDelaunay, triangleConsumer, trianglePolygons } from "@/triangles/delaunayHelper";
 
 type CanvasProps = {
     width?: number,
@@ -374,25 +374,6 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
 */
 
 
-function* drawTriangle( triangles:Triangle[]) {
-
-    for( let tri of triangles ){
-        const [p0, p1, p2] = tri.nodes;
-        const {x, y} = getPolygonCentered(tri.nodes);
-        yield {x, y, p0, p1, p2};
-    }
-
-}
-
-function* genTriangles(imageData:ImageData, edges:PointArray) {
-    let i=1;
-
-    while(i<edges.length) {
-        const sample = edges.slice(0, i);
-        yield Delaunay.from(imageData.width, imageData.height).insert(sample).getTriangles();
-        i=i<<1;
-    }
-}
 
 
 
@@ -435,35 +416,19 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
     [imageData?.edges, threshold, pointDensity]);
 
 
-    useWatch(()=>{
+    useEffect(()=>{
         const origin = imageData?.origin;
+        let generator:Generator|null = null;
         if(origin && edgePoints){
             const ctx = ref.current?.getContext('2d', {willReadFrequently:true});
-            ctx?.putImageData(imageData.edges,0,0);
-            const gen = genTriangles(origin, edgePoints);
-            const loop = () => {
-                const r = gen.next();
-                if(!r.done) {
-                ctx?.clearRect(0, 0, origin.width, origin.height);
-                 for( let t of  r.value){
-                    const [p0, p1, p2] = t.nodes;
-                    ctx?.beginPath();
-                    ctx?.moveTo(p0.x, p0.y);
-                    ctx?.lineTo(p1.x, p1.y);
-                    ctx?.lineTo(p2.x, p2.y);
-                    ctx?.lineTo(p0.x, p0.y);
-                    const {x, y} = getPolygonCentered(t.nodes);
-                    const color = getColorByPos(origin, ~~x, ~~y);
-                    ctx!.fillStyle = `rgb(${color.r},${color.g},${color.b})`;
-                    ctx!.strokeStyle = `rgb(${color.r},${color.g},${color.b})`;
-                    ctx?.closePath();
-                    ctx?.stroke();
-                    ctx?.fill();
-                 }
-                    setTimeout(loop, 100);
-                }
+            generator = trianglePolygons(edgePoints, {w:origin.width, h:origin.height});
+            const consumer = triangleConsumer(drawDelaunayConsumer(ctx), origin);
+            generatorBinder(generator, consumer);
+        }
+        return ()=>{
+            if(generator){
+                generator.return(null);
             }
-            loop(); 
         }
     }, [imageData?.origin, edgePoints])
 
@@ -473,7 +438,7 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
         const image = await getImageFromFile(source) as HTMLImageElement;
         ctx!.canvas.width = image.width;
         ctx!.canvas.height = image.height;
-        ctx?.drawImage(image, 0, 0, image.width, image.height, 0, 0, ctx?.canvas.width, ctx?.canvas.height); //getImageData(image);
+        ctx?.drawImage(image, 0, 0, image.width, image.height, 0, 0, ctx?.canvas.width, ctx?.canvas.height);
         const imageData = ctx?.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height)!;
         const blurImageData = stackBlur(imageData, imageData.width, imageData.height, 2);
         const edgeImageData = getSobelImageData(blurImageData);
