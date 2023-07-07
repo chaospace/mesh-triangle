@@ -10,7 +10,8 @@ import Delaunay, { Triangle } from "@/triangles/Delaunay";
 import { useControls } from "leva";
 import useForceUpdate from "@/hooks/useForceUpdate";
 import useRender from "@/hooks/useRender";
-import { drawDelaunayConsumer, generatorBinder, getPolygonCentered, interpolateEdgePoints, renderDelaunay, triangleConsumer, trianglePolygons } from "@/triangles/delaunayHelper";
+import { drawDelaunayConsumer, generatorBinder, interpolateEdgePoints, triangleConsumer, trianglePolygons } from "@/triangles/delaunayHelper";
+import { EFFECT_ACTIONS, useEffectDispatch, useEffectEdgeImageData, useEffectEdgePoints, useEffectImageData, useEffectParams } from "@/store/effectStore";
 
 type CanvasProps = {
     width?: number,
@@ -379,47 +380,75 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
 
 function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
 
-
-    const { pointDensity, threshold,  showCircle, isFill } = useControls({
+    const dispatch = useEffectDispatch();
+    const {isFill, showCircle, edgeThreshold, pointPrecision} = useEffectParams();
+    const origin  = useEffectImageData();
+    const edges = useEffectEdgeImageData();
+    
+    useControls({
         pointDensity: {
-            value: 0.5,
+            value: pointPrecision,
             min: 0,
             max: 1,
-            step: .1
+            step: .1,
+            onChange:(value:number)=>{
+                dispatch({
+                    type:EFFECT_ACTIONS.PARAM_UPDATE,
+                    payload:{pointPrecision:value}
+                });
+            }
         },
         threshold: {
-            value: .6,
+            value: edgeThreshold,
             min: .1,
             max: .8,
-            step: .1
+            step: .1,
+            onChange:(value:number)=>{
+                dispatch({
+                    type:EFFECT_ACTIONS.PARAM_UPDATE,
+                    payload:{
+                        edgeThreshold:value
+                    }
+                })
+            }
         },
-        showCircle: false,
-        isFill: false
+        showCircle:{
+            value:showCircle,
+            onChange:(value:boolean) => {
+                dispatch({
+                    type:EFFECT_ACTIONS.PARAM_UPDATE,
+                    payload:{
+                        showCircle:value
+                    }
+                })
+            }
+        },
+        isFill:{
+            value:isFill,
+            onChange:(value:boolean) => {
+                dispatch({
+                    type:EFFECT_ACTIONS.PARAM_UPDATE,
+                    payload:{
+                        isFill:value
+                    }
+                })
+            }
+        }
     });
 
     const ref = useRef<HTMLCanvasElement|null>(null);
-    const [imageData, setImageData] = useState<{origin:ImageData, edges:ImageData}|null>(null);
-    // const { ref, setup } = useCanvasEffect({ w: W, h: H }, { pointDensity, threshold, animate, isTriangle, isFill, isOverride });
-
-    useRender(() => {
-        console.log('draw-re--screen');
-    });
-
-
-
-
+    
     const edgePoints = useMemo(()=>{
-        return imageData?.edges ? interpolateEdgePoints( getEdgePoints(imageData?.edges, threshold*255), pointDensity) : null;
+        return edges ? interpolateEdgePoints( getEdgePoints(edges, edgeThreshold*255), pointPrecision) : null;
     },
-    [imageData?.edges, threshold, pointDensity]);
+    [edges, edgeThreshold, pointPrecision]);
 
 
     useEffect(()=>{
-        const origin = imageData?.origin;
         let generator:Generator|null = null;
         if(origin && edgePoints){
             const ctx = ref.current?.getContext('2d', {willReadFrequently:true})!;
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.clearRect(0, 0, origin.width, origin.height);
             generator = trianglePolygons(edgePoints, {w:origin.width, h:origin.height});
             const drawGenerator = drawDelaunayConsumer(ctx, {isFill, showCircle});
             const consumer = triangleConsumer(drawGenerator, origin);
@@ -430,7 +459,7 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
                 generator.return(null);
             }
         }
-    }, [imageData?.origin, edgePoints, showCircle, isFill])
+    }, [origin, edgePoints, showCircle, isFill])
 
 
     useWatch(async () => {
@@ -443,17 +472,18 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
         const imageData = getImageData(image);
         const blurImageData = stackBlur(imageData, imageData.width, imageData.height, 2);
         const edgeImageData = getSobelImageData(blurImageData);
-        setImageData({
-            origin:imageData,
-            edges :edgeImageData
-        });
+        dispatch(
+            {
+                type:EFFECT_ACTIONS.IMAGE_CHANGE,
+                payload:{
+                    imageData,
+                    edgeImageData
+                }
+            }
+        )
     }, [source]);
 
-    return (
-        <>
-            <canvas ref={ ref } width={ width } height={ height } />
-        </>
-    )
+    return (<canvas ref={ ref } width={ width } height={ height } />)
 };
 
 
