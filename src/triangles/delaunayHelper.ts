@@ -79,7 +79,7 @@ const triangleConsumer = generatorConsumer(function* (receiver:Generator, imageD
                 const {x, y} = getPolygonCentered(triangle.nodes);
                 const color = getColorByPos( imageData, ~~x, ~~y );
                 const [p0, p1, p2] = triangle.nodes;
-                receiver.next({color, p0, p1, p2});
+                receiver.next({color:`rgb(${color.r},${color.g},${color.b})`, p0, p1, p2, circle:triangle.circle});
             }
             
         }
@@ -89,20 +89,31 @@ const triangleConsumer = generatorConsumer(function* (receiver:Generator, imageD
     }
 } as GeneratorFunction);
 
-const drawDelaunayConsumer = generatorConsumer(function* (ctx:CanvasRenderingContext2D){
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+const drawDelaunayConsumer = generatorConsumer(function* (ctx:CanvasRenderingContext2D, {isFill, showCircle}:any){
+    // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     try{
         while(true){
             const info = yield;
-            const {color, p0, p1, p2} = info as any;
+            const {color, p0, p1, p2, circle} = info as any;
             ctx.beginPath();
             ctx.moveTo(p0.x, p0.y);
             ctx.lineTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
             ctx.lineTo(p0.x, p0.y);
-            ctx.strokeStyle = `rgb(${color.r},${color.g},${color.b})`;
+            ctx.strokeStyle = color;
+            if(isFill){
+                ctx.fillStyle=color;
+                ctx.fill();
+            }
             ctx.stroke();
             ctx.closePath();
+            if(showCircle){
+                ctx.beginPath();
+                ctx.arc(circle.x, circle.y, circle.radiusSq, 0, Math.PI*2 );
+                ctx.strokeStyle=`rgba(255,0,0,.2)`;
+                ctx.stroke();
+                ctx.closePath();   
+            }
         }
     }finally {
         console.log('DONE!!!');

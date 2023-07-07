@@ -380,7 +380,7 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
 function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
 
 
-    const { pointDensity, threshold, animate, isTriangle, isFill, isOverride } = useControls({
+    const { pointDensity, threshold,  showCircle, isFill } = useControls({
         pointDensity: {
             value: 0.5,
             min: 0,
@@ -388,15 +388,13 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
             step: .1
         },
         threshold: {
-            value: .1,
+            value: .6,
             min: .1,
             max: .8,
             step: .1
         },
-        animate: false,
-        isTriangle: false,
-        isFill: false,
-        isOverride: false
+        showCircle: false,
+        isFill: false
     });
 
     const ref = useRef<HTMLCanvasElement|null>(null);
@@ -420,26 +418,29 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
         const origin = imageData?.origin;
         let generator:Generator|null = null;
         if(origin && edgePoints){
-            const ctx = ref.current?.getContext('2d', {willReadFrequently:true});
+            const ctx = ref.current?.getContext('2d', {willReadFrequently:true})!;
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             generator = trianglePolygons(edgePoints, {w:origin.width, h:origin.height});
-            const consumer = triangleConsumer(drawDelaunayConsumer(ctx), origin);
-            generatorBinder(generator, consumer);
+            const drawGenerator = drawDelaunayConsumer(ctx, {isFill, showCircle});
+            const consumer = triangleConsumer(drawGenerator, origin);
+            generatorBinder(generator, consumer, 200);
         }
         return ()=>{
             if(generator){
                 generator.return(null);
             }
         }
-    }, [imageData?.origin, edgePoints])
+    }, [imageData?.origin, edgePoints, showCircle, isFill])
 
 
     useWatch(async () => {
         const ctx = ref.current?.getContext('2d', {willReadFrequently:true});
         const image = await getImageFromFile(source) as HTMLImageElement;
-        ctx!.canvas.width = image.width;
-        ctx!.canvas.height = image.height;
-        ctx?.drawImage(image, 0, 0, image.width, image.height, 0, 0, ctx?.canvas.width, ctx?.canvas.height);
-        const imageData = ctx?.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height)!;
+        const scale = getScaleRatio(image.width, image.height, window.innerWidth, window.innerHeight);
+        ctx!.canvas.width = ~~(image.width*scale);
+        ctx!.canvas.height = ~~(image.height*scale);
+        ctx!.scale(scale, scale);
+        const imageData = getImageData(image);
         const blurImageData = stackBlur(imageData, imageData.width, imageData.height, 2);
         const edgeImageData = getSobelImageData(blurImageData);
         setImageData({
