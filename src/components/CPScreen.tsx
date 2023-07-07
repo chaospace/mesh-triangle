@@ -1,17 +1,13 @@
-import { DependencyList, MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import useWatch from "@/hooks/useWatch";
 import getImageFromFile from "@/utils/getImageFromFile";
-import { adjustPointCount, calculateImageColorData, getColorByPos, getEdgePoints, getGrayScaleData, getGridInfo, getImageData, getSobelImageData } from "@/utils/canvasHelper";
-import getRatioSize, { getScaleRatio } from "../utils/getRatioSize";
+import {  getEdgePoints, getImageData, getSobelImageData } from "@/utils/canvasHelper";
+import  { getScaleRatio } from "../utils/getRatioSize";
 import stackBlur from "@/utils/stackBlur";
-import { PointArray, PointLike } from "@/types";
-// import { Delaunay } from "d3-delaunay";
-import Delaunay, { Triangle } from "@/triangles/Delaunay";
+import {  PointLike } from "@/types";
 import { useControls } from "leva";
-import useForceUpdate from "@/hooks/useForceUpdate";
-import useRender from "@/hooks/useRender";
 import { drawDelaunayConsumer, generatorBinder, interpolateEdgePoints, triangleConsumer, trianglePolygons } from "@/triangles/delaunayHelper";
-import { EFFECT_ACTIONS, useEffectDispatch, useEffectEdgeImageData, useEffectEdgePoints, useEffectImageData, useEffectParams } from "@/store/effectStore";
+import { EFFECT_ACTIONS, useEffectDispatch, useEffectEdgeImageData, useEffectImageData, useEffectParams } from "@/store/effectStore";
 
 type CanvasProps = {
     width?: number,
@@ -379,7 +375,9 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
 
 
 function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
-
+    
+    const ref = useRef<HTMLCanvasElement|null>(null);
+    
     const dispatch = useEffectDispatch();
     const {isFill, showCircle, edgeThreshold, pointPrecision} = useEffectParams();
     const origin  = useEffectImageData();
@@ -436,7 +434,7 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
         }
     });
 
-    const ref = useRef<HTMLCanvasElement|null>(null);
+    
     
     const edgePoints = useMemo(()=>{
         return edges ? interpolateEdgePoints( getEdgePoints(edges, edgeThreshold*255), pointPrecision) : null;
@@ -482,8 +480,9 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
             }
         )
     }, [source]);
-
+    
     return (<canvas ref={ ref } width={ width } height={ height } />)
+
 };
 
 

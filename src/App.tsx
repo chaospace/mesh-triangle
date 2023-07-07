@@ -3,6 +3,7 @@ import sampleImage from "./assets/images/image_4.jpg?inline";
 import CPScreen from './components/CPScreen';
 import './App.css'
 import useForceUpdate from './hooks/useForceUpdate';
+import StipplingCanvas from './components/StipplingScreen';
 //import { useEffectStore } from './store/effectStore';
 
 
@@ -18,7 +19,8 @@ function App() {
 
   return (
     <div className='container'>
-      <CPScreen source={ imageSource } />
+      {/* <CPScreen source={ imageSource } /> */}
+      <StipplingCanvas  source={ imageSource }/>
       <div className='control-layer'>
         <div>
           <input className='custom-file-input' type="file" name="upload-image" id="ipt-upload-image" accept='image/*' onChange={ onChangeFile } />
