@@ -1,18 +1,10 @@
 import { QuantizerCelebi } from "@material/material-color-utilities";
 import Delaunay from "../triangles/Delaunay";
-import { interpolateEdgePoints } from "../triangles/delaunayHelper";
+import { interpolateEdgePoints } from "@/drawStrategy/delaunayStrategy";
 import { IMAGE_WORKER_EVENT_TYPE, ImageWorkerData } from "../types"
 import { getEdgePoints, getSobelImageData } from "./canvasHelper";
 import stackBlur from "./stackBlur";
 
-
-// const getRGBFromInt = (num: number) => {
-//     let b = num & 0xFF;
-//     let g = (num & 0xFF00) >>> 8;
-//     let r = (num & 0xFF0000) >>> 16;
-//     let a = ((num & 0xFF000000) >>> 24) / 255;
-//     return [r / 255, g / 255, b / 155, a];
-// }
 
 onmessage = (e: MessageEvent<ImageWorkerData>) => {
     const { type, buffer, width, height, params } = e.data;

@@ -23,8 +23,6 @@ function getVerticesFromPoints(points: PointArray, maxPoints: number, accuracy: 
     const xInc = ~~(w / columns);
     const yInc = ~~(h / rows);
 
-    console.log('columns', columns, 'rows', rows, 'xInc', xInc, 'yInc', yInc, 'w', w, 'h', h);
-
     let rowIndex = 0;
     let startX = 0;
     let x = 0;

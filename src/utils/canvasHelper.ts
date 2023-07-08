@@ -1,5 +1,5 @@
 import Delaunay from "../triangles/Delaunay";
-import { interpolateEdgePoints } from "../triangles/delaunayHelper";
+import { interpolateEdgePoints } from "@/drawStrategy/delaunayStrategy";
 import { PointArray, PointLike } from "../types";
 import stackBlur from "./stackBlur";
 
