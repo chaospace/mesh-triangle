@@ -1,11 +1,10 @@
-import { getPolygonCenteroid, stipplingPointProducer, transformCenteroid } from "@/drawStrategy/stipplingStrategy";
+import { drawDelaunayConsumer,  stipplingPointProducer, transformCenteroid } from "@/drawStrategy/stipplingStrategy";
 import useWatch from "@/hooks/useWatch";
 import { calculateImageColorData, getImageData, getImageDataIndex } from "@/utils/canvasHelper";
 import { generatorBinder } from "@/utils/generatoerHelper";
 import getImageFromFile from "@/utils/getImageFromFile";
 import { getScaleRatio } from "@/utils/getRatioSize";
 import stackBlur from "@/utils/stackBlur";
-import { Delaunay } from "d3-delaunay";
 import { useControls } from "leva";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -85,10 +84,11 @@ function StipplingCanvas({ source, width = 400, height = 400 }: CanvasProps) {
         if(edgePoints && origin && selectColorWeights ){
             const ctx = ref.current?.getContext('2d', {willReadFrequently:true})!;
             
-            const producer = stipplingPointProducer(edgePoints, origin, selectColorWeights);
+            const producer = stipplingPointProducer(edgePoints);
+            const drawGenerator = drawDelaunayConsumer(ctx, origin);
             generatorBinder(
                 producer,
-                transformCenteroid(ctx, origin)
+                transformCenteroid(drawGenerator, origin, selectColorWeights)
             )
            
            return ()=>{
