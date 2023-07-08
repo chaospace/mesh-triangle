@@ -6,8 +6,9 @@ import  { getScaleRatio } from "../utils/getRatioSize";
 import stackBlur from "@/utils/stackBlur";
 import {  PointLike } from "@/types";
 import { useControls } from "leva";
-import { drawDelaunayConsumer, generatorBinder, interpolateEdgePoints, triangleConsumer, trianglePolygons } from "@/triangles/delaunayHelper";
+import { drawDelaunayConsumer, interpolateEdgePoints, triangleConsumer, trianglePolygonProducer } from "@/drawStrategy/delaunayStrategy";
 import { EFFECT_ACTIONS, useEffectDispatch, useEffectEdgeImageData, useEffectImageData, useEffectParams } from "@/store/effectStore";
+import { generatorBinder } from "@/utils/generatoerHelper";
 
 type CanvasProps = {
     width?: number,
@@ -295,7 +296,7 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
                 }
 
                 //triangle로 
-                let polygons = depParams.isTriangle ? delaunay.trianglePolygons() : voronoi.cellPolygons();
+                let polygons = depParams.isTriangle ? delaunay.trianglePolygonProducer() : voronoi.cellPolygons();
                 for (let cell of polygons) {
                     const [cx, cy] = polygonCenteroid(cell);
                     _ref.current!.beginPath();
@@ -323,7 +324,7 @@ function useCanvasEffect(config: EffectConfig, depParams: EffectParams) {
                 // _ref.current!.fill();
                 // _ref.current!.closePath();
                 if (depParams.isOverride) {
-                    polygons = depParams.isTriangle ? voronoi.cellPolygons() : delaunay.trianglePolygons();
+                    polygons = depParams.isTriangle ? voronoi.cellPolygons() : delaunay.trianglePolygonProducer();
                     for (let cell of polygons) {
                         // const [cx, cy] = polygonCenteroid(cell);
                         _ref.current!.beginPath();
@@ -447,7 +448,7 @@ function CPScreen({ source, width = 400, height = 400 }: CanvasProps) {
         if(origin && edgePoints){
             const ctx = ref.current?.getContext('2d', {willReadFrequently:true})!;
             ctx.clearRect(0, 0, origin.width, origin.height);
-            generator = trianglePolygons(edgePoints, {w:origin.width, h:origin.height});
+            generator = trianglePolygonProducer(edgePoints, {w:origin.width, h:origin.height});
             const drawGenerator = drawDelaunayConsumer(ctx, {isFill, showCircle});
             const consumer = triangleConsumer(drawGenerator, origin);
             generatorBinder(generator, consumer, 200);
